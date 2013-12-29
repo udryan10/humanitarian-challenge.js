@@ -1,0 +1,10 @@
+<html>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  var socket = io.connect('http://hc.roadrunner.grothouseryan.lan:8000');
+  socket.on('news', function (data) {
+    console.log(data);
+    socket.emit('my other event', { my: 'yo bitch this is my data' });
+  });
+</script>
+</html>

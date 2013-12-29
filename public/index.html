@@ -1,0 +1,560 @@
+<!--
+  inex.html
+  Main page for app. Separate pages using jquery mobile/ajax
+-->
+
+<!-- todo: check to make sure cookies are enabled for device -->
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="http://code.jquery.com/mobile/1.3.1/jquery.mobile-1.3.1.min.css" />
+  <script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+  <script src= "./public/js/jquery.cookie.js"></script>
+  <script src="http://code.jquery.com/mobile/1.3.1/jquery.mobile-1.3.1.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <style type="text/css">
+    .ui-header .ui-title {
+    margin-right: 10%;
+    margin-left: 10%;
+}
+  </style>
+</head>
+
+<body>
+<script language = "javascript" type = "text/javascript">
+
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-40843604-1', 'humanitarianchallenge.co');
+  ga('send', 'pageview');
+
+var selectedItems = new Array();
+var pick2 = 0;
+var imczar = 0;
+var imczarintervalid;
+var redrawsRemaining;
+var socket;
+
+$(document).ready(function(){
+
+  // connect to socket
+  socket = io.connect('http://hc.roadrunner.grothouseryan.lan:8000');
+ 
+  if(!$.cookie('cfh_cookie')){
+    // new player - need to turn on code enter form
+    $(location).attr('href','index.html#register');
+  }
+  else { // this is a returning player
+   // populate gameinfo div with player id and game id
+   $('#main_page_header').html("Humanitarian Challenge - " +jQuery.parseJSON($.cookie('cfh_cookie')).game_uid);
+   // setup our czar and black card timer checks
+   $(location).attr('href','index.html#main');
+
+   // need to bootstrap the board game, emit bootstrap event 
+   socket.emit('bootstrap',$.cookie('cfh_cookie'));
+   //// setInterval("czjarCheck()", 2000);
+   //// setInterval("blackCardCheck()", 2000);
+   //// setInterval("update_score()", 3000);
+   //// setInterval("redraw_check()", 3000);
+  }
+  socket.on('black_card_update', function(data){
+    black_card_update(data);
+  });
+
+  // primarily used for bootstrapping the white cards, but will also allow the server to update the clients cards for any reason
+  socket.on('white_card_update', function(data){
+    white_card_update(data);
+  });
+
+  socket.on('czar_update', function(data){
+    czar_update(data);
+  }); 
+
+  socket.on('test_event', function(data){
+    alert(JSON.stringify(data));
+  });
+});
+
+function czar_update(data)
+{
+  // are you czar?
+  if(data.czar_uid == jQuery.parseJSON($.cookie('cfh_cookie')).player_uid) 
+  {
+    $('#czar_results_row').show();  
+    if($('#draw_black_card_button').hasClass('ui-disabled'))
+    {
+      $("#draw_black_card_button").removeClass('ui-disabled');
+    }
+  }
+  else
+  {
+    $('#czar_results_row').hide();  
+    if(!$('#draw_black_card_button').hasClass('ui-disabled'))
+    {
+      $("#draw_black_card_button").addClass('ui-disabled');
+    }
+    
+  }
+}
+// this has been nodejsified
+function black_card_update(data)
+{
+  pick2 = data.pick2;
+  //TODO: in html use name and set card id to either -1 or cardid. when user select_white_card ensure black_card is not -1
+  $("td[name=black_card_contents]").html(data.cardtext);
+
+  $("td[name=black_card_contents]").attr('id', "black_id_" +data.cardid);
+}
+
+// this has been nodejsified
+function draw_white()
+{
+  console.log("in draw_white");
+  socket.emit('white_card_draw', $.cookie('cfh_cookie'),function(data){
+    white_card_update(data); 
+  });
+}
+
+// this has been nodejsified
+function white_card_update(data)
+{
+  console.log(JSON.stringify(data));
+  jQuery.each(data, function(index, itemData) {
+    $("td[name=" + index + "]").html(itemData.card_text);
+    $("td[name=" + index + "]").attr('id', itemData.card_id);
+  });  
+}
+
+function redraw_check()
+{
+
+    $.getJSON("redraw_num_check.php", { "game_id":jQuery.parseJSON($.cookie('cfh_cookie')).game_uid, "uid":jQuery.parseJSON($.cookie('cfh_cookie')).player_uid }, function(data){
+         redrawsRemaining = data.redraws_remaining;
+         $("#redraws_remaining").html(redrawsRemaining);
+         
+    });
+
+}
+function submit_pick_button_handler()
+{
+  if($("td[name=black_card_contents]").attr('id') == 'black_id_-1')// if black card is empty, don't even test anything else - submit should be empty
+  {
+     $("#submit_picks_button").addClass('ui-disabled'); 
+     return;
+  }
+ 
+  //if czar, no submit
+  if(imczar == 1) {return;}
+  
+  if(pick2 == "0" && selectedItems.length == 1)
+  {
+    if($('#submit_picks_button').hasClass('ui-disabled'))
+    {
+      $("#submit_picks_button").removeClass('ui-disabled');
+    }
+  }
+  else if (pick2 == "1" && selectedItems.length == 2)
+  {
+    if($('#submit_picks_button').hasClass('ui-disabled'))
+    {
+      $("#submit_picks_button").removeClass('ui-disabled');
+    }
+  }
+  else
+  {
+    if(!$('#submit_picks_button').hasClass('ui-disabled'))
+    {
+      $("#submit_picks_button").addClass('ui-disabled');
+    }
+  }
+}
+
+function redraw_pick_button_handler()
+{
+  if( selectedItems.length > 0 && (redrawsRemaining - selectedItems.length >= 0) )
+  {
+    $("#redraw_button").removeClass('ui-disabled');  
+  }
+  else
+  {
+    $("#redraw_button").addClass('ui-disabled');
+  }
+}
+
+function redraw_white()
+{
+  var cardIDString = "";
+  var $i = 0;
+  for (x in selectedItems)
+  {
+    if($i == 0)
+    {
+      cardIDString += selectedItems[x];
+    }
+    else
+    {
+      cardIDString += ";" + selectedItems[x];
+    }
+    //TODO: revisit how i do selected items
+    $("#" + selectedItems[x]).html("");
+    $("#" + selectedItems[x]).css("background-color","#f2f2f2");
+    $("#" + selectedItems[x]).attr('id', "-1");
+    $i++;
+
+  }
+  selectedItems.splice(0, selectedItems.length); //Not sure why i did it this way, but it empties the array
+
+  $.get("redraw_white_cards.php", {"uid":jQuery.parseJSON($.cookie('cfh_cookie')).player_uid,"game_id":jQuery.parseJSON($.cookie('cfh_cookie')).game_uid, "cards": cardIDString});
+  $("#redraw_button").addClass('ui-disabled');
+  if(!$('#submit_picks_button').hasClass('ui-disabled'))
+  {
+    $("#submit_picks_button").addClass('ui-disabled');
+  }
+}
+
+function card_select(element)
+{
+  
+  if ($(element).attr('id') == -1){ return;} //this is a blank white card, return
+
+  if(imczar == 1 && redrawsRemaining == 0) { return; } //you are czar and there are no redraws, cant select cards to submit
+
+  if($("td[name=black_card_contents]").attr('id') == 'black_id_-1' && redrawsRemaining == 0) { return; } //if there is no black card, can't select any white cards
+
+
+  if(selectedItems.length == 0)
+  {
+    selectedItems.push(element.id);
+    $(element).css("background-color","#868686");
+    submit_pick_button_handler();
+    redraw_pick_button_handler();
+  }
+  else
+  {
+    var x;
+    var inTest = 0;
+    for (x in selectedItems)
+    {
+      if(selectedItems[x] == element.id) //if we find a card, we are unselecting it
+      {
+        selectedItems.splice(inTest,1);
+	$(element).css("background-color","#f2f2f2");
+        submit_pick_button_handler();
+        redraw_pick_button_handler();
+      }
+      inTest++;
+    }
+
+    if(inTest == selectedItems.length) //no card foudn, we are selecting it
+    {
+      selectedItems.push(element.id);
+      $(element).css("background-color","#868686");
+      submit_pick_button_handler();
+      redraw_pick_button_handler();
+    }
+  }
+}
+
+// this has been nodejsified
+function redraw_submit()
+{
+  if($("#redraw_input").val() == '' || isNaN($("#redraw_submit").val()))
+  {
+    alert('value must be a valid integer');
+  }
+  else
+  {
+    socket.emit('new_game_create', {redraw_input: $("#redraw_input").val()}, function(data){
+      console.log(data.game_code); 
+      $("#new_game_code").html(data.game_code);
+      $(location).attr('href','index.html#game_code_dialog'); 
+    });    
+  }
+}
+
+// this has been nodejsified
+function submitInfo()
+{
+  if($("#game_id_input").val() == '' || $("#name_input").val() == '')
+  {
+    $('#code_enter_error_text').html("please include all fields");
+  }
+  else
+  {
+    // emit a new_user_regsiter event to register the user
+    socket.emit('new_user_register',  { "player_name":$("#name_input").val(), "code_box":$("#game_id_input").val() }, function(data){
+      if(data.returnstatus == 'success')
+      {
+        var cookieString = '{"player_uid" : "'+ data.player_uid + '","game_uid": "'+ data.game_uid +'"}';
+
+        $.cookie('cfh_cookie', cookieString , { expires: 1, path: '/' });
+     
+        $('#main_page_header').html("Humanitarian Challenge - " +jQuery.parseJSON($.cookie('cfh_cookie')).game_uid);
+        $(location).attr('href','index.html#main');
+        socket.emit('bootstrap',$.cookie('cfh_cookie'));
+      }
+      else if (data.returnstatus == 'error')
+      {
+        $('#code_enter_error_text').html(data.returnmessage);
+      }
+    });
+  }
+}
+
+function gatherSubmits()
+{
+  $.getJSON("gather_submits.php", {"game_id": jQuery.parseJSON($.cookie('cfh_cookie')).game_uid}, function(data){
+         
+    if(data.allsubmitted == 'true')
+    {
+      $("#submitted_player_count").html(0);
+  
+      var buildhtml = "<table border = 1 style = 'width: 100%'>";
+      jQuery.each(data.submissions[0],function(index,itemData) {
+  
+        //buildhtml +=  "<tr><td  onclick = 'pick_winner(this)' id =" + index + ">" + itemData.slice(0,-1) + "</td></tr>";
+        buildhtml +=  "<tr><td style = 'padding: 10px; width: 40%'>" + itemData.slice(0,-1) + "</td><td style = 'padding: 10px;width: 60%;' ><form><a href = '#' onclick = 'pick_winner(this)' data-role='button' id='" + index + "'> Select </a></form>" + "</td></tr>";
+      }); 
+  
+      buildhtml += "</table>";
+      $("#submitted_display").html(buildhtml).trigger("create");
+      clearInterval(imczarintervalid);
+  
+    }
+    else
+    { 
+      $("#submitted_player_count").html(data.numneedingtosubmit); 
+    }
+  }); 
+}
+
+
+// this has been nodejsified
+function draw_black()
+{
+  socket.emit('black_card_draw', $.cookie('cfh_cookie'));
+}
+
+function submit_white()
+{
+  var cardIDString = "";
+  var $i = 0;
+  for (x in selectedItems)
+  {
+    if($i == 0)
+    {
+      cardIDString += selectedItems[x];
+    }
+    else
+    {
+      cardIDString += ";" + selectedItems[x];
+    }
+    //TODO: revisit how i do selected items
+    $("#" + selectedItems[x]).html("");
+    $("#" + selectedItems[x]).css("background-color","#f2f2f2");
+    $("#" + selectedItems[x]).attr('id', "-1");
+    $i++;
+	
+  }
+  selectedItems.splice(0, selectedItems.length);
+
+  $.get("submit_white_cards.php", {"uid":jQuery.parseJSON($.cookie('cfh_cookie')).player_uid,"game_id":jQuery.parseJSON($.cookie('cfh_cookie')).game_uid, "cards": cardIDString});	
+  $("#submit_picks_button").addClass('ui-disabled');
+
+  if(!$('#redraw_button').hasClass('ui-disabled'))
+  {
+    $("#redraw_button").addClass('ui-disabled');
+  }
+  
+}
+
+function cleanup_current_hand()
+{
+  //change czar, delete from card_submit_pile update black_card_discard
+  $.getJSON("cleanup_current_hand.php", {"game_id":jQuery.parseJSON($.cookie('cfh_cookie')).game_uid},function(data){
+  });
+}
+
+function pick_winner(element)
+{
+  $.getJSON("submit_winner.php", {"game_id":jQuery.parseJSON($.cookie('cfh_cookie')).game_uid, "winner_id":$("#"+element.id).attr('id')},function(data){
+
+    if (data.return_status == 'success')
+    {
+      cleanup_current_hand();
+      $("#submitted_display").html("");
+    }
+  });
+}
+
+function update_score()
+{
+  $.getJSON("score_check.php", {"game_id":jQuery.parseJSON($.cookie('cfh_cookie')).game_uid},function(data){ 
+  var scorehtml = "<table id = 'player_score_table' data-role=\"table\" data-mode=\"columntoggle\" class= \"ui-responsvie table-stroke \"><thead><tr><th> Player </th> <th> Points </th></tr></thead><tbody>";
+
+  jQuery.each(data,function(index,itemData) {		
+		
+    if(itemData.wonlast == 1)
+    {
+      if(itemData.czar == 1)
+      {
+        scorehtml += "<tr><td><b>" + index + "</b></td><td style = 'background-color: #E0E0E0'>" + itemData.score  + "</td></tr>";	
+      }
+      else
+      {
+        scorehtml += "<tr><td>" + index + "</td><td style = 'background-color: #E0E0E0'>" + itemData.score  + "</td></tr>";	
+      }
+    }
+    else
+    {
+      if(itemData.czar == 1)
+      {
+        scorehtml += "<tr><td><b>" + index + "</b></td><td>" +  itemData.score + "</td></tr>";	
+      }
+      else
+      {
+        scorehtml += "<tr><td>" + index + "</td><td>" +  itemData.score + "</td></tr>";	
+      }
+    } 
+  });
+  scorehtml += "</tbody></table>";
+  $('#player_score').html(scorehtml).trigger("create");
+  });
+}
+
+function delete_cookie()
+{
+  $.get("quit_game.php", {"uid":jQuery.parseJSON($.cookie('cfh_cookie')).player_uid,"game_id":jQuery.parseJSON($.cookie('cfh_cookie')).game_uid});
+  $.removeCookie('cfh_cookie');
+  $(location).attr('href','index.html');
+}
+
+
+</script>
+
+<!-- html for start of game -->
+<div data-role="page" id='register'>
+  <div data-role="header">
+    <h1>Humanitarian Challenge - Get Started</h1>
+  </div><!-- /header -->
+  <div data-role="content">	
+    <form>
+      <span id = 'code_enter_error_text' style = 'color:red'> </span>
+      <input type="text" name="name_input" id="name_input" placeholder="Name" value="" data-clear-btn="true">
+      <input type="text" name="game_id_input" id="game_id_input" placeholder="Game ID" value="" data-clear-btn="true">
+      <a id='code_enter_form_submit' href="#" onclick="submitInfo()" data-role="button">Submit</a>
+      <a id='create_new_game' href="#redraw_allow" data-role="button" data-rel="dialog" >Create New Game</a>
+    </form>
+     <a id='suggest_card' href="suggest_card.html" data-role="button" >Dude, Let me contribute!</a>
+  </div> <!-- /content -->
+</div>
+<div data-role="page" id='redraw_allow'>
+  <div data-role="header">
+    <h1> Redraws to allow </h1>
+  </div> <!-- /header -->
+  <div data-role="content">
+    <form>
+      # of White Card Redraws to allow
+      <input type="number" min="0" max="30" name="redraw_input" id="redraw_input" value="5" data-clr-btn="true"/>
+      <a href="#" onclick="redraw_submit()" id='redraw_submit' data-role="button" data-rel="dialog">Submit</a>
+    </form>
+  </div>
+</div>
+<!-- /html for start of game -->
+<!-- dialog page for create new game -->
+<div data-role="dialog" id="game_code_dialog">
+  <div data-role="header">
+    <h1>Game Code</h1>
+  </div><!-- /header -->
+
+  <div data-role="content">
+    <center><h1 id = "new_game_code"></h1></center>
+    <form>
+      <a href="index.html" id='game_codeclose' data-role='button'> Close </a>
+    </form>
+  </div>
+</div>
+<!-- /dialog page for create new game -->
+
+<!-- html for main area of game -->
+<div data-role="page" id='main'>
+  <div data-role="header">
+    <h1><div id='main_page_header'></div></h1>
+  </div><!-- /header -->
+
+  <div data-role="content">
+    <div id = 'player_score'>
+    </div>
+    <table id = 'main_board' style = 'width:100%'>
+      <tr id = 'black_section_row'>
+        <td>
+              <table id = 'black_section'>
+	        <tr><td style = 'height:160px; width: 130px;padding:10px;vertical-align: top; border-style: solid; border-width:3px; background-color: black; color: white' name = 'black_card_contents' id = 'black_id_-1'> </td>
+	 	    <td> <a href="#"  onclick = 'draw_black()' id = 'draw_black_card_button' class = 'ui-disabled' data-role="button">Draw</a></td>
+		</tr>
+          </table><br/><br/>
+        </td></tr>
+      <tr style =  'display: none' id = 'czar_results_row'>
+	<td colspan = 2>
+	  <table id = 'czar_results_section' width = '100%'>
+ 	    <tr>
+	      <td> Players left to submit: <span id ='submitted_player_count'> </span></td>
+	    </tr>
+	    <tr>
+	      <td id = 'submitted_display'> </td>
+            </tr>
+	  </table>
+	  <br/><br/><br/>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          Redraws Reamining: <span id='redraws_remaining'> </span>
+          <a href="#" id = 'redraw_button' name = 'redraw_button' data-role='button' onclick = 'redraw_white()' class='ui-disabled'> Redraw </a>
+          <a href="#" id = 'draw_white_card' name = 'draw_white_card' data-role='button' onclick = 'draw_white()'> Draw </a>
+          <a href="#" id = 'submit_picks_button' name = 'submit_picks_button' data-role='button' onclick = 'submit_white()' class='ui-disabled'> Submit</a>
+	 </td>
+      </tr>
+      <tr id = 'white_section_row'>
+       <td>
+         <table id = 'white_section' style='width:100%'>
+	   <tr>
+	     <td  onclick = 'card_select(this)' name = '1_white_card_contents' style = 'padding: 10px; vertical-align:top; border-style: solid; border-width:3px' id = '-1'>  
+             </td>
+	     <td onclick = 'card_select(this)'  name = '2_white_card_contents' style = 'height:160px; width: 130px; padding: 10px; vertical-align:top;  border-style: solid; border-width:3px' id = '-1'> 
+	     </td>
+	     <td onclick = 'card_select(this)'  name = '3_white_card_contents' style = 'height:160px; width: 130px; padding: 10px; vertical-align:top;  border-style: solid; border-width:3px' id = '-1'> 
+             </td>
+	     <td onclick = 'card_select(this)'  name = '4_white_card_contents' style = 'height:160px; width: 130px; padding: 10px; vertical-align:top;  border-style: solid; border-width:3px' id = '-1'> 
+	     </td>
+          </tr>
+          <tr>
+	     <td onclick = 'card_select(this)'  name = '5_white_card_contents' style = 'height:160px; width: 130px; padding: 10px; vertical-align:top;  border-style: solid; border-width:3px' id = '-1'> 
+	     </td>
+    	     <td onclick = 'card_select(this)'  name = '6_white_card_contents' style = 'height:160px; width: 130px; padding: 10px; vertical-align:top;  border-style: solid; border-width:3px' id = '-1'> 
+             </td>
+	     <td onclick = 'card_select(this)'  name = '7_white_card_contents' style = 'height:160px; width: 130px; padding: 10px; vertical-align:top;  border-style: solid; border-width:3px' id = '-1'> 
+	     </td>
+	     <td onclick = 'card_select(this)'  name = '8_white_card_contents' style = 'height:160px; width: 130px; padding: 10px; vertical-align:top;  border-style: solid; border-width:3px' id = '-1'> 
+	     </td>
+           </tr>
+           <tr>
+	     <td onclick = 'card_select(this)'  name = '9_white_card_contents' style = 'height:160px; width: 130px; padding: 10px; vertical-align:top;  border-style: solid; border-width:3px' id = '-1'> 
+	     </td>
+	     <td  onclick = 'card_select(this)'  name = '10_white_card_contents' style = 'height:160px; width: 130px; padding: 10px; vertical-align:top;  border-style: solid; border-width:3px' id = '-1'> 
+             </td>
+           </tr>
+         </table> 
+      </td>
+    </tr>
+     </table> 
+     <br/><br/>
+     <a href="#" id='quit_game' onclick="delete_cookie()" data-role="button">Quit Game</a>
+   </div><!-- /content -->
+  </div><!-- /html for main area of game -->
+</body>
+</html>
