@@ -3,6 +3,8 @@
 //    + cardtext, cardid, pick2
 //  czar_update - modify user who is czar 
 //    + czar_uid
+//  white_card_update - modify white cards
+//    + [index : {card_text:, card_id:}]
 // includes
 var express = require('express');
 

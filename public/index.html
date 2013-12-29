@@ -122,7 +122,6 @@ function draw_white()
 // this has been nodejsified
 function white_card_update(data)
 {
-  console.log(JSON.stringify(data));
   jQuery.each(data, function(index, itemData) {
     $("td[name=" + index + "]").html(itemData.card_text);
     $("td[name=" + index + "]").attr('id', itemData.card_id);
