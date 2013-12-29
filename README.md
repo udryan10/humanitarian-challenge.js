@@ -9,3 +9,14 @@ mobile multi-player web based game based on Cards Against Humanity (www.cardsaga
   - __jquery mobile__ - <code>http://jquerymobile.com/</code> for front-end UI
   - __jquery core__ - <code>http://jquery.com/</code> for front-end UX
 
+---
+
+###Developer Notes
+
+####Client events:
+  - black_card_update - update black card
+    - expects: cardtext, cardid, pick2
+  - czar_update - update who is czar
+    - expects: czar_uid
+  - white_card_update - modify white cards
+    - expects: [index : {card_text:, card_id:}]
