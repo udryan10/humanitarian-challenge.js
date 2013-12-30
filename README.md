@@ -25,3 +25,5 @@ mobile multi-player web based game based on Cards Against Humanity (www.cardsaga
 ####TODO:
   - submit lockout so user cannot submit a second time
   - in call back functions, need to send callback on an error and notify the client of the error so to display on screen
+
+code for pickwinner, redraw white and cleanup round

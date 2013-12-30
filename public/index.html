@@ -146,12 +146,8 @@ function white_card_update(data)
 function redraw_update(data)
 {
 
-    //$.getJSON("redraw_num_check.php", { "game_id":jQuery.parseJSON($.cookie('cfh_cookie')).game_uid, "uid":jQuery.parseJSON($.cookie('cfh_cookie')).player_uid }, function(data){
-         redrawsRemaining = data.redraws_remaining;
-         $("#redraws_remaining").html(redrawsRemaining);
-         
-    //});
-
+  redrawsRemaining = data.redraws_remaining;
+  $("#redraws_remaining").html(redrawsRemaining);
 }
 // this has been nodejsified
 function submit_pick_button_handler()
@@ -322,6 +318,7 @@ function submitInfo()
   }
 }
 
+// this has been nodejsified
 function update_submits(data)
 {
   if(data.allsubmitted == 'true')
