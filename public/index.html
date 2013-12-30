@@ -35,7 +35,6 @@
 var selectedItems = new Array();
 var pick2 = 0;
 var imczar = 0;
-var imczarintervalid;
 var redrawsRemaining;
 var socket;
 var submit_lockout = false;
@@ -65,9 +64,12 @@ $(document).ready(function(){
   socket.on('black_card_update', function(data){
     black_card_update(data);
   });
+  
+  socket.on('update_submits', function(data){
+    update_submits(data);
+  });
 
   socket.on('redraw_remaining_update', function(data){
-    console.log(JSON.stringify(data));
     redraw_update(data);
   });
 
@@ -94,6 +96,7 @@ function czar_update(data)
   // are you czar?
   if(data.czar_uid == jQuery.parseJSON($.cookie('cfh_cookie')).player_uid) 
   {
+    imczar = 1;
     $('#czar_results_row').show();  
     if($('#draw_black_card_button').hasClass('ui-disabled'))
     {
@@ -102,6 +105,7 @@ function czar_update(data)
   }
   else
   {
+    imczar = 0;
     $('#czar_results_row').hide();  
     if(!$('#draw_black_card_button').hasClass('ui-disabled'))
     {
@@ -318,31 +322,27 @@ function submitInfo()
   }
 }
 
-function gatherSubmits()
+function update_submits(data)
 {
-  //$.getJSON("gather_submits.php", {"game_id": jQuery.parseJSON($.cookie('cfh_cookie')).game_uid}, function(data){
-         
-    if(data.allsubmitted == 'true')
-    {
-      $("#submitted_player_count").html(0);
+  if(data.allsubmitted == 'true')
+  {
+    $("#submitted_player_count").html(0);
   
-      var buildhtml = "<table border = 1 style = 'width: 100%'>";
-      jQuery.each(data.submissions[0],function(index,itemData) {
+    var buildhtml = "<table border = 1 style = 'width: 100%'>";
+    jQuery.each(data.submissions,function(index,itemData) {
+      jQuery.each(itemData, function(index2,itemData2){
   
-        //buildhtml +=  "<tr><td  onclick = 'pick_winner(this)' id =" + index + ">" + itemData.slice(0,-1) + "</td></tr>";
-        buildhtml +=  "<tr><td style = 'padding: 10px; width: 40%'>" + itemData.slice(0,-1) + "</td><td style = 'padding: 10px;width: 60%;' ><form><a href = '#' onclick = 'pick_winner(this)' data-role='button' id='" + index + "'> Select </a></form>" + "</td></tr>";
+        buildhtml +=  "<tr><td style = 'padding: 10px; width: 40%'>" + itemData2.slice(0,-1) + "</td><td style = 'padding: 10px;width: 60%;' ><form><a href = '#' onclick = 'pick_winner(this)' data-role='button' id='" + index2 + "'> Select </a></form>" + "</td></tr>";
       }); 
+    }); 
   
-      buildhtml += "</table>";
-      $("#submitted_display").html(buildhtml).trigger("create");
-      clearInterval(imczarintervalid);
-  
-    }
-    else
-    { 
-      $("#submitted_player_count").html(data.numneedingtosubmit); 
-    }
- // }); 
+    buildhtml += "</table>";
+    $("#submitted_display").html(buildhtml).trigger("create");
+  }
+  else
+  { 
+    $("#submitted_player_count").html(data.numneedingtosubmit); 
+  }
 }
 
 

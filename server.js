@@ -94,6 +94,8 @@ function bootstrap_user(socket,data) {
   update_score_selective(socket,data.game_uid,'broadcast');
 
   update_redraw_remaining(socket,data.player_uid,data.game_uid)
+
+  update_submits_selective(socket,data.game_uid,'broadcast')
 }
 
 function remove_user(socket,data){
@@ -165,6 +167,82 @@ function build_white_card_hand(player_uid,game_uid,user_full_cards,callback)
   connection.end();
 }
 
+function update_submits_selective(socket,game_uid,scope)
+{
+
+  var connection = connect_to_db();
+  var json_build = {};
+  connection.query("select count(*) AS total_players from player_list where game_id = ?",[game_uid],function(err,rows){
+    var connection2 = connect_to_db();
+    connection2.query("select count(*) AS total_submitted from card_submit_pile where game_uid = ?",[game_uid],function(err,rows2){
+      if( rows[0].total_players != 1 && rows[0].total_players == (rows2[0].total_submitted + 1))
+      {
+        json_build['allsubmitted'] = "true";
+        json_build['submissions'] = new Array();
+        var connection3 = connect_to_db();
+        connection3.query("select user_uid, cards_id_combined from card_submit_pile where game_uid =?",[game_uid],function(err,rows3){
+          var num_running_queries = 0;
+          for(var i = 0; i < rows3.length; i++)
+          {
+            num_running_queries++; 
+            var cards_split = rows3[i].cards_id_combined.split(';');
+            var or_string = "";
+            for(var x = 0; x < cards_split.length;x++)
+            {
+              if(x != 0) { or_string += " OR "};
+              or_string += "id = "+cards_split[x]; 
+            }
+            console.log("OR String: " + or_string);
+            var connection4 = connect_to_db();
+            var submission_element = {};
+            (function(user){
+              connection4.query("select text from white_card_deck where " + or_string,function(err,rows4){
+                console.log("whee");
+                var card_text_holder = "";
+                for(var z = 0; z < rows4.length;z++)
+                {
+                 card_text_holder += rows4[z].text + ";"; 
+                }
+                submission_element[user] = card_text_holder;
+                json_build['submissions'].push(submission_element);
+                num_running_queries--;
+                if(num_running_queries === 0)
+                {
+                  if(scope == 'broadcast')
+                  {
+                    io.sockets.in(game_uid).emit('update_submits', json_build);
+                  }
+                  else
+                  {
+                    socket.emit('update_submits',json_build);
+                  } 
+                }
+              });
+              connection4.end();  
+          }(i));
+          }  
+        });
+        connection3.end();
+      }
+      else
+      {
+        json_build['allsubmitted'] = "false";
+        json_build['numneedingtosubmit'] = rows[0].total_players - 1 - rows2[0].total_submitted 
+        if(scope == 'broadcast')
+        {
+          io.sockets.in(game_uid).emit('update_submits', json_build);
+        }
+        else
+        {
+          socket.emit('update_submits',json_build);
+        } 
+      }
+    }); 
+    connection2.end();
+  });
+  connection.end();
+}
+
 function update_score_selective(socket,game_uid,scope)
 {
   var connection = connect_to_db();
@@ -217,7 +295,6 @@ function submit_white_cards(socket,player_uid,game_uid,cards,callback)
          if(i != 0) { or_string += " OR ";}
          or_string += "white_card_id = "+cards_split[i]; 
       }
-      console.log("FUUCK" + or_string);
       var connection2 = connect_to_db();
       connection2.query("update user_hand set active = 0 where user_uid = ? and game_id = ? and (" + or_string + ")", [player_uid,game_uid], function(err,rows){
        callback();
@@ -248,7 +325,7 @@ io.sockets.on('connection', function (socket) {
 
  socket.on('submit_white_cards', function(data,ret){
   submit_white_cards(socket,data.player_uid,data.game_uid,data.cards,function(){
-    console.log("in function");
+    update_submits_selective(socket,data.game_uid,'broadcast');
     ret({});
   });
  });
