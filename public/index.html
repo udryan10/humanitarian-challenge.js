@@ -220,12 +220,13 @@ function redraw_white()
   }
   selectedItems.splice(0, selectedItems.length); //Not sure why i did it this way, but it empties the array
 
-  $.get("redraw_white_cards.php", {"uid":jQuery.parseJSON($.cookie('cfh_cookie')).player_uid,"game_id":jQuery.parseJSON($.cookie('cfh_cookie')).game_uid, "cards": cardIDString});
-  $("#redraw_button").addClass('ui-disabled');
-  if(!$('#submit_picks_button').hasClass('ui-disabled'))
-  {
-    $("#submit_picks_button").addClass('ui-disabled');
-  }
+  socket.emit('redraw_white',{player_uid: jQuery.parseJSON($.cookie('cfh_cookie')).player_uid,game_uid: jQuery.parseJSON($.cookie('cfh_cookie')).game_uid, cards: cardIDString},function(data){
+    $("#redraw_button").addClass('ui-disabled');
+    if(!$('#submit_picks_button').hasClass('ui-disabled'))
+    {
+      $("#submit_picks_button").addClass('ui-disabled');
+    }
+  }); 
 }
 
 // this has been nodejsified

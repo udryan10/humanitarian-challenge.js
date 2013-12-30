@@ -306,29 +306,58 @@ function submit_white_cards(socket,player_uid,game_uid,cards,callback)
 
 }
 
+function redraw_white(socket,player_uid,game_uid,cards,callback)
+{
+  var card_split = cards.split(';');
+  var connection = connect_to_db();
+  var or_string = "";
+  var i;
+  for(i = 0; i < card_split.length;i++)
+  {
+    if( i != 0){ or_string += " OR ";}
+    or_string += "white_card_id = " + card_split[i];
+  }
+  connection.query("update user_hand set active = 0 where user_uid = ? and game_id = ? and ( " + or_string + ")",[player_uid,game_uid], function(err,rows){
+    var connection2 = connect_to_db();
+    connection2.query("SELECT number_redraws from player_list where uid = ?",[player_uid], function(err,rows){
+      var connection3 = connect_to_db();
+      connection3.query("update player_list set number_redraws = ? where uid = ?",[rows[0].number_redraws + i,player_uid],function(err,rows){
+        callback();
+      });
+      connection3.end(); 
+    });
+    connection2.end();
+  });
+  connection.end();
+}
 
 // socket events
 io.sockets.on('connection', function (socket) {
- //socket.join('room1');
   console.log("someone connected");
- //io.sockets.in('room1').emit('news', {hello: 'world'});
- //io.sockets.in('room2').emit('news', {hello: 'world2'});
- socket.on('bootstrap', function(data) {
-   bootstrap_user(socket,JSON.parse(data)); 
- });
 
- socket.on('user_quit_game', function(data,ret){
-   remove_user(socket,JSON.parse(data));
-    //todo: check that remove_user was successful before returning
-    ret({});
- });
-
- socket.on('submit_white_cards', function(data,ret){
-  submit_white_cards(socket,data.player_uid,data.game_uid,data.cards,function(){
-    update_submits_selective(socket,data.game_uid,'broadcast');
-    ret({});
+  socket.on('bootstrap', function(data) {
+    bootstrap_user(socket,JSON.parse(data)); 
   });
- });
+
+  socket.on('redraw_white',function(data,ret){
+    redraw_white(socket,data.player_uid,data.game_uid,data.cards,function(){
+      update_redraw_remaining(socket,data.player_uid,data.game_uid) 
+      ret({});
+    });  
+  });
+
+  socket.on('user_quit_game', function(data,ret){
+    remove_user(socket,JSON.parse(data));
+     //todo: check that remove_user was successful before returning
+     ret({});
+  });
+
+  socket.on('submit_white_cards', function(data,ret){
+   submit_white_cards(socket,data.player_uid,data.game_uid,data.cards,function(){
+     update_submits_selective(socket,data.game_uid,'broadcast');
+     ret({});
+   });
+  });
 
  socket.on('white_card_draw', function(data,ret) {
   var data = JSON.parse(data);
