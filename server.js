@@ -29,36 +29,110 @@ function connect_to_db() {
   return connection;
 }
 
-// fire events to get users game board setup
-function bootstrap_user(socket,data) {
-  socket.join(data.game_uid);
+function czar_refresh_selective(socket,game_uid,scope){
   var connection = connect_to_db();
-  connection.query("select uid from player_list where czar = 1 and game_id = ?",[data.game_uid],function(err,rows){
+  var json_build = {};
+  connection.query("select uid from player_list where czar = 1 and game_id = ?",[game_uid],function(err,rows){
     if(err) throw err;
-    socket.emit('czar_update', {czar_uid: rows[0].uid}); 
-    connection.end();
+    if(rows.length != 0)
+    {
+      json_build = {czar_uid: rows[0].uid};
+      if ( scope == 'broadcast')
+      {
+        io.sockets.in(game_uid).emit('czar_update', json_build); 
+      }
+      else
+      {
+        socket.emit('czar_update',json_build);
+      }
+    }
   });
-  var connection2 = connect_to_db();
-  connection2.query("select black_card_deck.text,black_card_deck.Pick2,black_card_deck.id from black_card_deck, black_card_discard where black_card_discard.black_card_id = black_card_deck.id and game_id = ? and active = 1",[data.game_uid],function(err,rows){
+  connection.end();
+}
+
+function black_card_refresh_selective(socket,game_uid,scope)
+{
+  var connection = connect_to_db();
+  connection.query("select black_card_deck.text,black_card_deck.Pick2,black_card_deck.id from black_card_deck, black_card_discard where black_card_discard.black_card_id = black_card_deck.id and game_id = ? and active = 1",[game_uid],function(err,rows){
     if(err) throw err;
     console.log(rows[0]);
     var build_json = {}
     // there may be no active black cards, in this case return a the equivalent of a blank card"
     if(!rows[0])
     {
-      build_json = {cardtext: "", cardid: "-1", pick2: "0"} 
+      build_json = {cardtext: "", cardid: "-1", pick2: "0"}
     }
     else
     {
       build_json = {cardtext: rows[0].text, cardid: rows[0].id, pick2: rows[0].Pick2}
     }
-    socket.emit('black_card_update',build_json);
-    connection2.end();
-  });
+
+    if(scope == 'broadcast')
+    {
+      io.sockets.in(game_uid).emit('black_card_update', build_json); 
+    }
+    else
+    {
+      socket.emit('black_card_update', build_json);
+    }
+  });  
+  connection.end();
+}
+// fire events to get users game board setup
+function bootstrap_user(socket,data) {
+  socket.join(data.game_uid);
+
+  czar_refresh_selective(socket,data.game_uid,'socket');
+
+  black_card_refresh_selective(socket,data.game_uid,'socket')
 
   build_white_card_hand(data.player_uid,data.game_uid,10,function(data){
     socket.emit('white_card_update',data);
   });
+
+  update_score(data.game_uid);
+}
+
+function remove_user(socket,data){
+  var connection = connect_to_db();
+  connection.query("select czar from player_list where uid = ?",[data.player_uid], function(err, rows){
+    // user is czar, need to make someone else czar
+    if(rows.length == 1) 
+    {
+      var connection2 = connect_to_db();
+      connection2.query("select uid from player_list where game_id = ? and uid != ? order by uid limit 0,1",[data.game_uid,data.player_uid], function(err, rows){
+        if( rows.length != 0 )
+        {
+          var connection3 = connect_to_db();
+          connection3.query("update player_list set czar = 1 where uid = ?",[rows[0].uid], function(err, rows){
+          });
+          connection3.end();
+        }
+
+        var connection4 = connect_to_db();
+        connection4.query("update black_card_discard set active = 0 where game_id = ? and user_uid = ?",[data.game_uid,data.player_uid], function(err, rows){
+          black_card_refresh_selective(socket,data.game_uid,'broadcast');
+        });
+        connection4.end();
+      });
+      connection2.end();
+    }
+    var connection5 = connect_to_db();
+    connection5.query("update user_hand set active = 0 where user_uid = ? and game_id = ?",[data.player_uid,data.game_uid],function(err,rows){  
+      var connection6 = connect_to_db();
+      connection6.query("delete from player_list where uid = ?",[data.player_uid],function(err,rows){
+        var connection7 = connect_to_db();
+        connection7.query("delete from card_submit_pile where game_uid = ?",[data.game_uid],function(err,rows){
+          update_score(data.game_uid);
+          czar_refresh_selective(socket,data.game_uid,'broadcast');
+        });
+        connection7.end();
+      });
+      connection6.end();
+    });
+    connection5.end(); 
+  });
+  connection.end();
 }
 
 function build_white_card_hand(player_uid,game_uid,user_full_cards,callback)
@@ -88,15 +162,34 @@ function build_white_card_hand(player_uid,game_uid,user_full_cards,callback)
   connection.end();
 }
 
+function update_score(game_uid)
+{
+  var connection = connect_to_db();
+  var json_build = {};
+  connection.query("SELECT name, points, czar, wonlast from player_list where game_id = ?",[game_uid],function(err,rows){
+    for(var i=0; i < rows.length; i++){
+      var element_details = {score: rows[i].points, wonlast: rows[i].wonlast, czar: rows[i].czar};
+      json_build[rows[i].name] = element_details;
+    }
+    io.sockets.in(game_uid).emit('update_score', json_build);
+       
+  }); 
+  connection.end();
+}
+
 
 // socket events
 io.sockets.on('connection', function (socket) {
  //socket.join('room1');
- console.log("someone connected")
+ console.log("someone connected");
  //io.sockets.in('room1').emit('news', {hello: 'world'});
  //io.sockets.in('room2').emit('news', {hello: 'world2'});
  socket.on('bootstrap', function(data) {
-   bootstrap_user(socket,JSON.parse(data)) 
+   bootstrap_user(socket,JSON.parse(data)); 
+ });
+
+ socket.on('user_quit_game', function(data){
+   remove_user(socket,JSON.parse(data));
  });
 
  socket.on('white_card_draw', function(data,ret) {

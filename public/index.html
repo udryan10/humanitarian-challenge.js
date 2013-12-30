@@ -65,6 +65,9 @@ $(document).ready(function(){
     black_card_update(data);
   });
 
+  socket.on('update_score', function(data){
+    update_score(data);
+  });
   // primarily used for bootstrapping the white cards, but will also allow the server to update the clients cards for any reason
   socket.on('white_card_update', function(data){
     white_card_update(data);
@@ -389,10 +392,9 @@ function pick_winner(element)
     }
   });
 }
-
-function update_score()
+// this has been nodejsified
+function update_score(data)
 {
-  $.getJSON("score_check.php", {"game_id":jQuery.parseJSON($.cookie('cfh_cookie')).game_uid},function(data){ 
   var scorehtml = "<table id = 'player_score_table' data-role=\"table\" data-mode=\"columntoggle\" class= \"ui-responsvie table-stroke \"><thead><tr><th> Player </th> <th> Points </th></tr></thead><tbody>";
 
   jQuery.each(data,function(index,itemData) {		
@@ -422,12 +424,12 @@ function update_score()
   });
   scorehtml += "</tbody></table>";
   $('#player_score').html(scorehtml).trigger("create");
-  });
 }
 
+// this has been nodejsified
 function delete_cookie()
 {
-  $.get("quit_game.php", {"uid":jQuery.parseJSON($.cookie('cfh_cookie')).player_uid,"game_id":jQuery.parseJSON($.cookie('cfh_cookie')).game_uid});
+  socket.emit('user_quit_game',$.cookie('cfh_cookie'));
   $.removeCookie('cfh_cookie');
   $(location).attr('href','index.html');
 }

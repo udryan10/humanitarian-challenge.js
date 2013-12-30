@@ -20,3 +20,5 @@ mobile multi-player web based game based on Cards Against Humanity (www.cardsaga
     - expects: czar_uid
   - white_card_update - modify white cards
     - expects: [index : {card_text:, card_id:}]
+  - update_score - refresh score/user table
+    - expects: [name : {score:, wonlast:,czar:}]
