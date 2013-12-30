@@ -38,6 +38,7 @@ var imczar = 0;
 var imczarintervalid;
 var redrawsRemaining;
 var socket;
+var submit_lockout = false;
 
 $(document).ready(function(){
 
@@ -65,6 +66,11 @@ $(document).ready(function(){
     black_card_update(data);
   });
 
+  socket.on('redraw_remaining_update', function(data){
+    console.log(JSON.stringify(data));
+    redraw_update(data);
+  });
+
   socket.on('update_score', function(data){
     update_score(data);
   });
@@ -82,6 +88,7 @@ $(document).ready(function(){
   });
 });
 
+// this has been nodejsified
 function czar_update(data)
 {
   // are you czar?
@@ -131,16 +138,18 @@ function white_card_update(data)
   });  
 }
 
-function redraw_check()
+// this has been nodejsified
+function redraw_update(data)
 {
 
-    $.getJSON("redraw_num_check.php", { "game_id":jQuery.parseJSON($.cookie('cfh_cookie')).game_uid, "uid":jQuery.parseJSON($.cookie('cfh_cookie')).player_uid }, function(data){
+    //$.getJSON("redraw_num_check.php", { "game_id":jQuery.parseJSON($.cookie('cfh_cookie')).game_uid, "uid":jQuery.parseJSON($.cookie('cfh_cookie')).player_uid }, function(data){
          redrawsRemaining = data.redraws_remaining;
          $("#redraws_remaining").html(redrawsRemaining);
          
-    });
+    //});
 
 }
+// this has been nodejsified
 function submit_pick_button_handler()
 {
   if($("td[name=black_card_contents]").attr('id') == 'black_id_-1')// if black card is empty, don't even test anything else - submit should be empty
@@ -148,7 +157,7 @@ function submit_pick_button_handler()
      $("#submit_picks_button").addClass('ui-disabled'); 
      return;
   }
- 
+  if(submit_lockout){$("#submit_picks_button").addClass('ui-disabled'); return;}  
   //if czar, no submit
   if(imczar == 1) {return;}
   
@@ -175,6 +184,7 @@ function submit_pick_button_handler()
   }
 }
 
+// this has been nodejsified
 function redraw_pick_button_handler()
 {
   if( selectedItems.length > 0 && (redrawsRemaining - selectedItems.length >= 0) )
@@ -218,6 +228,7 @@ function redraw_white()
   }
 }
 
+// this has been nodejsified
 function card_select(element)
 {
   
@@ -309,7 +320,7 @@ function submitInfo()
 
 function gatherSubmits()
 {
-  $.getJSON("gather_submits.php", {"game_id": jQuery.parseJSON($.cookie('cfh_cookie')).game_uid}, function(data){
+  //$.getJSON("gather_submits.php", {"game_id": jQuery.parseJSON($.cookie('cfh_cookie')).game_uid}, function(data){
          
     if(data.allsubmitted == 'true')
     {
@@ -331,7 +342,7 @@ function gatherSubmits()
     { 
       $("#submitted_player_count").html(data.numneedingtosubmit); 
     }
-  }); 
+ // }); 
 }
 
 
@@ -341,6 +352,7 @@ function draw_black()
   socket.emit('black_card_draw', $.cookie('cfh_cookie'));
 }
 
+// this has been nodejsified
 function submit_white()
 {
   var cardIDString = "";
@@ -364,13 +376,15 @@ function submit_white()
   }
   selectedItems.splice(0, selectedItems.length);
 
-  $.get("submit_white_cards.php", {"uid":jQuery.parseJSON($.cookie('cfh_cookie')).player_uid,"game_id":jQuery.parseJSON($.cookie('cfh_cookie')).game_uid, "cards": cardIDString});	
-  $("#submit_picks_button").addClass('ui-disabled');
+  socket.emit('submit_white_cards',{player_uid: jQuery.parseJSON($.cookie('cfh_cookie')).player_uid,game_uid: jQuery.parseJSON($.cookie('cfh_cookie')).game_uid, cards: cardIDString},function(data){
+    $("#submit_picks_button").addClass('ui-disabled');
+    submit_lockout = true;
 
-  if(!$('#redraw_button').hasClass('ui-disabled'))
-  {
-    $("#redraw_button").addClass('ui-disabled');
-  }
+    if(!$('#redraw_button').hasClass('ui-disabled'))
+    {
+      $("#redraw_button").addClass('ui-disabled');
+    }
+  });
   
 }
 
@@ -429,9 +443,10 @@ function update_score(data)
 // this has been nodejsified
 function delete_cookie()
 {
-  socket.emit('user_quit_game',$.cookie('cfh_cookie'));
-  $.removeCookie('cfh_cookie');
-  $(location).attr('href','index.html');
+  socket.emit('user_quit_game',$.cookie('cfh_cookie'),function(data){
+    $.removeCookie('cfh_cookie');
+    $(location).attr('href','index.html');
+  });
 }
 
 

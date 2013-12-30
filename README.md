@@ -22,3 +22,6 @@ mobile multi-player web based game based on Cards Against Humanity (www.cardsaga
     - expects: [index : {card_text:, card_id:}]
   - update_score - refresh score/user table
     - expects: [name : {score:, wonlast:,czar:}]
+####TODO:
+  - submit lockout so user cannot submit a second time
+  - in call back functions, need to send callback on an error and notify the client of the error so to display on screen

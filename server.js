@@ -90,7 +90,10 @@ function bootstrap_user(socket,data) {
     socket.emit('white_card_update',data);
   });
 
-  update_score(data.game_uid);
+  // since we want all users to see the new user has joined, broadcast out
+  update_score_selective(socket,data.game_uid,'broadcast');
+
+  update_redraw_remaining(socket,data.player_uid,data.game_uid)
 }
 
 function remove_user(socket,data){
@@ -123,7 +126,7 @@ function remove_user(socket,data){
       connection6.query("delete from player_list where uid = ?",[data.player_uid],function(err,rows){
         var connection7 = connect_to_db();
         connection7.query("delete from card_submit_pile where game_uid = ?",[data.game_uid],function(err,rows){
-          update_score(data.game_uid);
+          update_score_selective(socket,data.game_uid,'broadcast');
           czar_refresh_selective(socket,data.game_uid,'broadcast');
         });
         connection7.end();
@@ -162,7 +165,7 @@ function build_white_card_hand(player_uid,game_uid,user_full_cards,callback)
   connection.end();
 }
 
-function update_score(game_uid)
+function update_score_selective(socket,game_uid,scope)
 {
   var connection = connect_to_db();
   var json_build = {};
@@ -171,25 +174,83 @@ function update_score(game_uid)
       var element_details = {score: rows[i].points, wonlast: rows[i].wonlast, czar: rows[i].czar};
       json_build[rows[i].name] = element_details;
     }
-    io.sockets.in(game_uid).emit('update_score', json_build);
+    if(scope == 'broadcast')
+    {
+      io.sockets.in(game_uid).emit('update_score', json_build);
+    }
+    else
+    {
+      socket.emit('update_score',json_build);
+    }
        
   }); 
   connection.end();
+}
+
+function update_redraw_remaining(socket,player_uid,game_uid)
+{
+  var connection = connect_to_db();
+  connection.query("SELECT number_redraws from player_list where uid = ?",[player_uid],function(err,rows){
+    var connection2 = connect_to_db();
+    var json_build = {};
+    connection2.query("SELECT num_redraw_allowed from game_details where game_code = ?",[game_uid],function(err,rows2){
+      json_build['redraws_remaining'] = rows2[0].num_redraw_allowed - rows[0].number_redraws; 
+      socket.emit('redraw_remaining_update',json_build);
+    });
+    connection2.end();  
+  });
+  connection.end();
+}
+
+function submit_white_cards(socket,player_uid,game_uid,cards,callback)
+{
+  var connection = connect_to_db();
+  var insert_fields = {user_uid: player_uid,game_uid: game_uid, cards_id_combined: cards};
+  connection.query("insert into card_submit_pile SET ?", insert_fields,function(err,rows){
+    // todo: callback on error
+    if(!err)
+    {
+      var cards_split = cards.split(';');
+      var or_string = "";
+      for(var i=0;i < cards_split.length;i++)
+      {
+         if(i != 0) { or_string += " OR ";}
+         or_string += "white_card_id = "+cards_split[i]; 
+      }
+      console.log("FUUCK" + or_string);
+      var connection2 = connect_to_db();
+      connection2.query("update user_hand set active = 0 where user_uid = ? and game_id = ? and (" + or_string + ")", [player_uid,game_uid], function(err,rows){
+       callback();
+      });
+      connection2.end();
+    }
+  }); 
+  connection.end();
+
 }
 
 
 // socket events
 io.sockets.on('connection', function (socket) {
  //socket.join('room1');
- console.log("someone connected");
+  console.log("someone connected");
  //io.sockets.in('room1').emit('news', {hello: 'world'});
  //io.sockets.in('room2').emit('news', {hello: 'world2'});
  socket.on('bootstrap', function(data) {
    bootstrap_user(socket,JSON.parse(data)); 
  });
 
- socket.on('user_quit_game', function(data){
+ socket.on('user_quit_game', function(data,ret){
    remove_user(socket,JSON.parse(data));
+    //todo: check that remove_user was successful before returning
+    ret({});
+ });
+
+ socket.on('submit_white_cards', function(data,ret){
+  submit_white_cards(socket,data.player_uid,data.game_uid,data.cards,function(){
+    console.log("in function");
+    ret({});
+  });
  });
 
  socket.on('white_card_draw', function(data,ret) {
