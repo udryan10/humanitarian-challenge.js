@@ -192,19 +192,20 @@ function update_submits_selective(socket,game_uid,scope)
               if(x != 0) { or_string += " OR "};
               or_string += "id = "+cards_split[x]; 
             }
-            console.log("OR String: " + or_string);
             var connection4 = connect_to_db();
             var submission_element = {};
             (function(user){
+              console.log("in function this is or_string" + or_string);
               connection4.query("select text from white_card_deck where " + or_string,function(err,rows4){
-                console.log("whee");
                 var card_text_holder = "";
                 for(var z = 0; z < rows4.length;z++)
                 {
                  card_text_holder += rows4[z].text + ";"; 
                 }
+                submission_element = {};
                 submission_element[user] = card_text_holder;
                 json_build['submissions'].push(submission_element);
+                console.log("json_build is:" + JSON.stringify(json_build));
                 num_running_queries--;
                 if(num_running_queries === 0)
                 {
@@ -422,7 +423,8 @@ io.sockets.on('connection', function (socket) {
       czar_refresh_selective(socket,data.game_uid,'broadcast') 
       black_card_refresh_selective(socket,data.game_uid,'broadcast')
       update_submits_selective(socket,data.game_uid,'broadcast');
-      socket.emit('unlock_submit',{});
+      update_score_selective(socket,data.game_uid,'broadcast');
+      io.sockets.in(data.game_uid).emit('unlock_submit',{});
     });
   });
 

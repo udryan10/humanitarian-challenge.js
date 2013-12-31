@@ -66,6 +66,7 @@ $(document).ready(function(){
   });
   
   socket.on('unlock_submit', function(data){
+    console.log("in unlock_submit event");
     submit_lockout = false;
   });
 
@@ -160,10 +161,11 @@ function submit_pick_button_handler()
   {
      $("#submit_picks_button").addClass('ui-disabled'); 
      return;
+     console.log("in first");
   }
-  if(submit_lockout){$("#submit_picks_button").addClass('ui-disabled'); return;}  
+  if(submit_lockout){$("#submit_picks_button").addClass('ui-disabled'); console.log("in second");return;}  
   //if czar, no submit
-  if(imczar == 1) {return;}
+  if(imczar == 1) {console.log("in third");return;}
   
   if(pick2 == "0" && selectedItems.length == 1)
   {
@@ -181,6 +183,7 @@ function submit_pick_button_handler()
   }
   else
   {
+    console.log("in third");
     if(!$('#submit_picks_button').hasClass('ui-disabled'))
     {
       $("#submit_picks_button").addClass('ui-disabled');
@@ -395,7 +398,6 @@ function submit_white()
 // this function has been nodejsified
 function create_new_round()
 {
-  console.log("create_new_round function");
   socket.emit('create_new_round',$.cookie('cfh_cookie'),function(data){
   });
 }
