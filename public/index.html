@@ -38,6 +38,7 @@ var imczar = 0;
 var redrawsRemaining;
 var socket;
 var submit_lockout = false;
+var socket_disconnect_detected = false;
 
 $(document).ready(function(){
 
@@ -48,19 +49,31 @@ $(document).ready(function(){
     // new player - need to turn on code enter form
     $(location).attr('href','index.html#register');
   }
-  else { // this is a returning player
-   // populate gameinfo div with player id and game id
-   $('#main_page_header').html("Humanitarian Challenge - " +jQuery.parseJSON($.cookie('cfh_cookie')).game_uid);
-   // setup our czar and black card timer checks
-   $(location).attr('href','index.html#main');
+  else 
+  { // this is a returning player
+    // populate gameinfo div with player id and game id
+    $('#main_page_header').html("Humanitarian Challenge - " +jQuery.parseJSON($.cookie('cfh_cookie')).game_uid);
+    // setup our czar and black card timer checks
+    $(location).attr('href','index.html#main');
 
-   // need to bootstrap the board game, emit bootstrap event 
-   socket.emit('bootstrap',$.cookie('cfh_cookie'));
-   //// setInterval("czjarCheck()", 2000);
-   //// setInterval("blackCardCheck()", 2000);
-   //// setInterval("update_score()", 3000);
-   //// setInterval("redraw_check()", 3000);
+    // need to bootstrap the board game, emit bootstrap event 
+    socket.emit('bootstrap',$.cookie('cfh_cookie'));
+    
   }
+
+  socket.on('reconnect_failed', function () {
+    $('#game_error_text').html("Was unable to reconnect automatically, please reload page.");
+  });
+
+  socket.on('reconnecting',function(){
+    $('#game_error_text').html("A disconnect from the server was detected. Retrying...");
+  });
+
+  socket.on('reconnect', function () {
+      $('#game_error_text').html("");
+      socket.emit('bootstrap',$.cookie('cfh_cookie'));
+  });
+
   socket.on('black_card_update', function(data){
     black_card_update(data);
   });
@@ -510,6 +523,7 @@ function delete_cookie()
   </div><!-- /header -->
 
   <div data-role="content">
+      <span id = 'game_error_text' style = 'color:red'> </span>
     <div id = 'player_score'>
     </div>
     <table id = 'main_board' style = 'width:100%'>
