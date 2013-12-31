@@ -219,7 +219,7 @@ function update_submits_selective(socket,game_uid,scope)
                 }
               });
               connection4.end();  
-          }(i));
+          }(rows3[i].user_uid));
           }  
         });
         connection3.end();
@@ -331,6 +331,68 @@ function redraw_white(socket,player_uid,game_uid,cards,callback)
   connection.end();
 }
 
+function submit_winner(socket,winner_player_uid,game_uid,callback)
+{
+  var connection = connect_to_db();
+  var json_build = {};
+  console.log("FUUCK" + winner_player_uid);
+  connection.query("select points from player_list where uid = ?",[winner_player_uid],function(err,rows){
+    var connection2 = connect_to_db();
+    connection2.query("update player_list set wonlast = 0 where game_id = ?",[game_uid],function(err,rows2){
+      var connection3 = connect_to_db();
+      connection3.query("update player_list set points = ? , wonlast = 1 where uid = ?",[rows[0].points + 1,winner_player_uid],function(err,rows3){
+        json_build['return_status'] = "success";
+        callback(json_build); 
+      });
+      connection3.end();
+    });
+    connection2.end();
+  });
+  connection.end();
+}
+
+function create_new_round(socket,game_uid,callback)
+{
+  
+  console.log("FUUCK in create function");
+  var connection = connect_to_db();
+  connection.query("select uid,czar from player_list where game_id = ? order by uid",[game_uid],function(err,rows){
+    var new_czar_id;
+    for(var i = 0; i < rows.length; i++)
+    {
+      if(rows[i].czar == 1)
+      {
+        if( i == rows.length -1)
+        {
+          new_czar_id = rows[0].uid;
+        }
+        else
+        {
+          new_czar_id = rows[i + 1].uid
+        }
+      }
+    } 
+    
+    var connection2 = connect_to_db();
+    connection2.query("delete from card_submit_pile where game_uid = ?",[game_uid],function(err,rows){
+      var connection3 = connect_to_db();
+      connection3.query("update black_card_discard set active = 0 where game_id = ?",[game_uid],function(err,rows){
+        var connection4 = connect_to_db();
+        connection4.query("update player_list set czar = 0 where czar = 1 and game_id = ?",[game_uid],function(err,rows){
+          var connection5 = connect_to_db();
+          connection5.query("update player_list set czar = 1 where uid = ?",[new_czar_id],function(err,rows){
+            callback();
+          });
+          connection5.end();
+        });
+        connection4.end();
+        });
+        connection3.end();
+      });
+    connection2.end();
+  });
+  connection.end();  
+}
 // socket events
 io.sockets.on('connection', function (socket) {
   console.log("someone connected");
@@ -344,6 +406,24 @@ io.sockets.on('connection', function (socket) {
       update_redraw_remaining(socket,data.player_uid,data.game_uid) 
       ret({});
     });  
+  });
+
+  socket.on('submit_winner',function(data,ret){
+    submit_winner(socket,data.winner_player_uid,data.game_uid, function(data2){
+      update_score_selective(socket,data.game_uid,'broadcast');
+      ret(data2);
+    });
+  });
+
+  socket.on('create_new_round', function(data,ret){
+    console.log("FUUCK in create");
+    var data = JSON.parse(data);
+    create_new_round(socket,data.game_uid,function(data2){
+      czar_refresh_selective(socket,data.game_uid,'broadcast') 
+      black_card_refresh_selective(socket,data.game_uid,'broadcast')
+      update_submits_selective(socket,data.game_uid,'broadcast');
+      socket.emit('unlock_submit',{});
+    });
   });
 
   socket.on('user_quit_game', function(data,ret){

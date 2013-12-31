@@ -65,6 +65,10 @@ $(document).ready(function(){
     black_card_update(data);
   });
   
+  socket.on('unlock_submit', function(data){
+    submit_lockout = false;
+  });
+
   socket.on('update_submits', function(data){
     update_submits(data);
   });
@@ -197,6 +201,7 @@ function redraw_pick_button_handler()
   }
 }
 
+// this has been nodejsified
 function redraw_white()
 {
   var cardIDString = "";
@@ -335,10 +340,11 @@ function update_submits(data)
     }); 
   
     buildhtml += "</table>";
-    $("#submitted_display").html(buildhtml).trigger("create");
+    $("#submitted_display").html(buildhtml).trigger('create');
   }
   else
   { 
+    $("#submitted_display").html("");
     $("#submitted_player_count").html(data.numneedingtosubmit); 
   }
 }
@@ -386,20 +392,21 @@ function submit_white()
   
 }
 
-function cleanup_current_hand()
+// this function has been nodejsified
+function create_new_round()
 {
-  //change czar, delete from card_submit_pile update black_card_discard
-  $.getJSON("cleanup_current_hand.php", {"game_id":jQuery.parseJSON($.cookie('cfh_cookie')).game_uid},function(data){
+  console.log("create_new_round function");
+  socket.emit('create_new_round',$.cookie('cfh_cookie'),function(data){
   });
 }
 
+// this function has been nodejsified
 function pick_winner(element)
 {
-  $.getJSON("submit_winner.php", {"game_id":jQuery.parseJSON($.cookie('cfh_cookie')).game_uid, "winner_id":$("#"+element.id).attr('id')},function(data){
-
+  socket.emit('submit_winner',{"game_uid":jQuery.parseJSON($.cookie('cfh_cookie')).game_uid, "winner_player_uid":$("#"+element.id).attr('id')},function(data){
     if (data.return_status == 'success')
     {
-      cleanup_current_hand();
+      create_new_round();
       $("#submitted_display").html("");
     }
   });
