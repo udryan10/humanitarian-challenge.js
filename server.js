@@ -401,7 +401,6 @@ function select_random_rows(rows,return_number)
   
   for(var i = 0; i < return_number; i++)
   {
-    console.log(rows.length);
     random_num = Math.floor((Math.random()*rows.length)+1);
     new_rows_array.push(rows[random_num]);
     rows.splice(random_num,1);
@@ -460,7 +459,6 @@ io.sockets.on('connection', function (socket) {
   var connection = connect_to_db();
   var user_full_cards = 10;
   var unix_time_stamp = Math.round(+new Date()/1000);
-  console.log(Math.round(+new Date()/1000));
   connection.query("select count(*) AS total from user_hand where user_uid = ? and active = 1",[data.player_uid],function(err,rows){
     if(err) throw err;
     var cards_needed = user_full_cards - rows[0].total;
@@ -495,7 +493,6 @@ io.sockets.on('connection', function (socket) {
             connection5.query("INSERT INTO user_hand VALUES" + query_fields,function(err){
               if(err) throw err;
               build_white_card_hand(data.player_uid,data.game_uid,user_full_cards,function(data){
-                console.log(Math.round(+new Date()/1000));
                 ret(data);
               });
             });
@@ -508,7 +505,6 @@ io.sockets.on('connection', function (socket) {
           var connection6 = connect_to_db();
           var query_fields = ""
           var rows =  select_random_rows(rows,cards_needed); 
-          console.log("my new row set is " + rows.length);
           for(i=0;i < rows.length;i++){
               if( i != 0) { query_fields = query_fields + ",";}
               query_fields = query_fields+"("+ connection6.escape(data.player_uid)+","+connection6.escape(rows[i].id)+","+connection6.escape(data.game_uid)+",1,"+connection6.escape(unix_time_stamp)+")";
@@ -517,7 +513,6 @@ io.sockets.on('connection', function (socket) {
           connection6.query("INSERT INTO user_hand VALUES" + query_fields,function(err){
             if(err) throw err;
             build_white_card_hand(data.player_uid,data.game_uid,user_full_cards,function(data){
-              console.log(Math.round(+new Date()/1000));
               ret(data);
             });
           });
@@ -661,26 +656,8 @@ app.get('/index.html', function(req, res){
 });	
 
 app.get('/status', function(req, res){
-  res.sendfile(__dirname + '/public/status.html');
+  res.send('im alive');
 });	
-
-app.get('/db-query', function (req, res) {
-
-  var connection = connect_to_db()
-  connection.connect();
-  
-  connection.query('SELECT * from user_hand', function(err, rows, fields) {
-    if (err) throw err;
- 
-    for ( var i=0;i < rows.length;i++)
-    {
-      console.log(rows[i].user_uid)
-    } 
-    console.log('The solution is: ', rows[0].user_uid);
-  });
-  
-  connection.end();
-});
 
 console.log('Listening on port 8000');
 
