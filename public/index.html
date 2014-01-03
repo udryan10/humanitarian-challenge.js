@@ -71,7 +71,10 @@ $(document).ready(function(){
 
   socket.on('reconnect', function () {
       $('#game_error_text').html("");
-      socket.emit('bootstrap',$.cookie('cfh_cookie'));
+      if($.cookie('cfh_cookie')){
+        {
+        socket.emit('bootstrap',$.cookie('cfh_cookie'));
+        }
   });
 
   socket.on('black_card_update', function(data){
@@ -485,7 +488,7 @@ function delete_cookie()
       <a id='code_enter_form_submit' href="#" onclick="submitInfo()" data-role="button">Submit</a>
       <a id='create_new_game' href="#redraw_allow" data-role="button" data-rel="dialog" >Create New Game</a>
     </form>
-     <a id='suggest_card' href="suggest_card.html" data-role="button" >Dude, Let me contribute!</a> 
+    <!-- <a id='suggest_card' href="suggest_card.html" data-role="button" >Dude, Let me contribute!</a> -->
   </div> <!-- /content -->
 </div>
 <div data-role="page" id='redraw_allow'>
