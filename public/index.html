@@ -43,7 +43,8 @@ var socket_disconnect_detected = false;
 $(document).ready(function(){
 
   // connect to socket
-  socket = io.connect('http://humanitarianchallenge.co:8000');
+  console.log(location.href.substr(0, location.href.indexOf("/", 8)));
+  socket = io.connect(location.href.substr(0, location.href.indexOf("/", 8)) + ':8000');
  
   if(!$.cookie('cfh_cookie')){
     // new player - need to turn on code enter form
@@ -71,10 +72,10 @@ $(document).ready(function(){
 
   socket.on('reconnect', function () {
       $('#game_error_text').html("");
-      if($.cookie('cfh_cookie')){
-        {
+      if($.cookie('cfh_cookie'))
+      {
         socket.emit('bootstrap',$.cookie('cfh_cookie'));
-        }
+      }
   });
 
   socket.on('black_card_update', function(data){

@@ -394,6 +394,20 @@ function create_new_round(socket,game_uid,callback)
   });
   connection.end();  
 }
+
+function select_random_rows(rows,return_number)
+{
+  var new_rows_array = Array();
+  
+  for(var i = 0; i < return_number; i++)
+  {
+    console.log(rows.length);
+    random_num = Math.floor((Math.random()*rows.length)+1);
+    new_rows_array.push(rows[random_num]);
+    rows.splice(random_num,1);
+  }
+  return new_rows_array;
+}
 // socket events
 io.sockets.on('connection', function (socket) {
   console.log("someone connected");
@@ -446,6 +460,7 @@ io.sockets.on('connection', function (socket) {
   var connection = connect_to_db();
   var user_full_cards = 10;
   var unix_time_stamp = Math.round(+new Date()/1000);
+  console.log(Math.round(+new Date()/1000));
   connection.query("select count(*) AS total from user_hand where user_uid = ? and active = 1",[data.player_uid],function(err,rows){
     if(err) throw err;
     var cards_needed = user_full_cards - rows[0].total;
@@ -453,7 +468,7 @@ io.sockets.on('connection', function (socket) {
     if(cards_needed > 0)
     {
       var connection2 = connect_to_db();
-      connection2.query("SELECT * from white_card_deck where id NOT IN (select white_card_id from user_hand where game_id = ?) ORDER BY RAND( ) LIMIT 0,"+cards_needed,[data.game_uid],function(err,rows){
+      connection2.query("SELECT * from white_card_deck where id NOT IN (select white_card_id from user_hand where game_id = ?)",[data.game_uid],function(err,rows){
         if(err) throw err;
         var new_cards_available = rows.length
         // don't have enough cards, reshuffle white
@@ -465,11 +480,13 @@ io.sockets.on('connection', function (socket) {
           });
           connection3.end();
           var connection4 = connect_to_db();
-          connection4.query("SELECT * from white_card_deck where id NOT IN (select white_card_id from user_hand where game_id = ?) ORDER BY RAND( ) LIMIT 0,"+cards_needed,[data.game_uid],function(err,rows){
+          connection4.query("SELECT * from white_card_deck where id NOT IN (select white_card_id from user_hand where game_id = ?)",[data.game_uid],function(err,rows){
             if(err) throw err;
 
             var connection5 = connect_to_db();
             var query_fields = ""
+            var rows =  select_random_rows(rows,cards_needed); 
+            console.log("my new row set is " + rows.length);
             for(i=0;i < rows.length;i++){
                 if( i != 0) { query_fields = query_fields + ",";}
                 query_fields = query_fields+"("+ connection5.escape(data.player_uid)+","+connection5.escape(rows[i].id)+","+connection5.escape(data.game_uid)+",1,"+connection5.escape(unix_time_stamp)+")";
@@ -478,6 +495,7 @@ io.sockets.on('connection', function (socket) {
             connection5.query("INSERT INTO user_hand VALUES" + query_fields,function(err){
               if(err) throw err;
               build_white_card_hand(data.player_uid,data.game_uid,user_full_cards,function(data){
+                console.log(Math.round(+new Date()/1000));
                 ret(data);
               });
             });
@@ -489,6 +507,8 @@ io.sockets.on('connection', function (socket) {
         {
           var connection6 = connect_to_db();
           var query_fields = ""
+          var rows =  select_random_rows(rows,cards_needed); 
+          console.log("my new row set is " + rows.length);
           for(i=0;i < rows.length;i++){
               if( i != 0) { query_fields = query_fields + ",";}
               query_fields = query_fields+"("+ connection6.escape(data.player_uid)+","+connection6.escape(rows[i].id)+","+connection6.escape(data.game_uid)+",1,"+connection6.escape(unix_time_stamp)+")";
@@ -497,6 +517,7 @@ io.sockets.on('connection', function (socket) {
           connection6.query("INSERT INTO user_hand VALUES" + query_fields,function(err){
             if(err) throw err;
             build_white_card_hand(data.player_uid,data.game_uid,user_full_cards,function(data){
+              console.log(Math.round(+new Date()/1000));
               ret(data);
             });
           });
