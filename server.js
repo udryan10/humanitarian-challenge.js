@@ -639,6 +639,9 @@ app.get('/index.html', function(req, res){
   res.sendfile(__dirname + '/public/index.html');
 });	
 
+app.get('/status', function(req, res){
+});	
+
 app.get('/db-query', function (req, res) {
 
   var connection = connect_to_db()
