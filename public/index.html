@@ -43,7 +43,7 @@ var socket_disconnect_detected = false;
 $(document).ready(function(){
 
   // connect to socket
-  socket = io.connect('http://hc.roadrunner.grothouseryan.lan:8000');
+  socket = io.connect('http://humanitarianchallenge.co:8000');
  
   if(!$.cookie('cfh_cookie')){
     // new player - need to turn on code enter form
@@ -485,7 +485,7 @@ function delete_cookie()
       <a id='code_enter_form_submit' href="#" onclick="submitInfo()" data-role="button">Submit</a>
       <a id='create_new_game' href="#redraw_allow" data-role="button" data-rel="dialog" >Create New Game</a>
     </form>
-     <a id='suggest_card' href="suggest_card.html" data-role="button" >Dude, Let me contribute!</a>
+     <!--<a id='suggest_card' href="suggest_card.html" data-role="button" >Dude, Let me contribute!</a> -->
   </div> <!-- /content -->
 </div>
 <div data-role="page" id='redraw_allow'>
