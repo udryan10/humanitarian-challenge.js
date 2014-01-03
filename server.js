@@ -640,6 +640,7 @@ app.get('/index.html', function(req, res){
 });	
 
 app.get('/status', function(req, res){
+  res.sendfile(__dirname + '/public/status.html');
 });	
 
 app.get('/db-query', function (req, res) {
