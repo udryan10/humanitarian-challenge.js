@@ -415,6 +415,16 @@ io.sockets.on('connection', function (socket) {
     bootstrap_user(socket,JSON.parse(data)); 
   });
 
+  socket.on('card_suggest_submit', function(data,ret) {
+    console.log("here");
+    var connection = connect_to_db();
+    var insert_fields = {color: data.color, text: data.text};
+    connection.query("insert into stage_new_card set ?",insert_fields, function(err,rows){
+      ret({});
+    });
+    connection.end();
+  });
+
   socket.on('redraw_white',function(data,ret){
     redraw_white(socket,data.player_uid,data.game_uid,data.cards,function(){
       update_redraw_remaining(socket,data.player_uid,data.game_uid) 
@@ -646,6 +656,21 @@ app.get('/test.txt', function(req, res){
 app.get('/socket-test', function(req, res){
   res.sendfile(__dirname + '/public/socket-test.html');
 });	
+
+app.head('/suggested_card', function(req,res){
+  var connection = connect_to_db();
+  connection.query("select * from stage_new_card", function(err,rows){
+    if(rows.length > 0)
+    {
+      res.send(200,''); 
+    }
+    else
+    {
+      res.send(204,''); 
+    }
+  });
+  connection.end();
+});
 
 app.get('/', function(req, res){
   res.sendfile(__dirname + '/public/index.html');

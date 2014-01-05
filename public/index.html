@@ -473,6 +473,33 @@ function delete_cookie()
   });
 }
 
+function submit_white_suggest()
+{
+  if($("#white_textarea").val() != '')
+  {
+    socket.emit('card_suggest_submit',{"text" : $("#white_textarea").val(), "color" : "white"},function(data){
+      $("#white_textarea").val('');
+      $.mobile.changePage('index.html#suggest_card_page', {
+        transition: "flip",
+        allowSamePageTransition: true,
+      });
+    });
+  }
+}
+function submit_black_suggest()
+{
+  if($("#black_textarea").val() != '')
+  {
+    socket.emit('card_suggest_submit',{"text" : $("#black_textarea").val(), "color" : "black"},function(data){
+      $("#black_textarea").val('');
+      $.mobile.changePage('index.html#suggest_card_page', {
+        transition: "flip",
+        allowSamePageTransition: true,
+      });
+    });
+  }
+}
+
 
 </script>
 
@@ -489,7 +516,7 @@ function delete_cookie()
       <a id='code_enter_form_submit' href="#" onclick="submitInfo()" data-role="button">Submit</a>
       <a id='create_new_game' href="#redraw_allow" data-role="button" data-rel="dialog" >Create New Game</a>
     </form>
-    <!-- <a id='suggest_card' href="suggest_card.html" data-role="button" >Dude, Let me contribute!</a> -->
+      <a id='suggest_card' href="index.html#suggest_card_page" data-role="button" >Dude, Let me contribute!</a> 
   </div> <!-- /content -->
 </div>
 <div data-role="page" id='redraw_allow'>
@@ -518,6 +545,29 @@ function delete_cookie()
     </form>
   </div>
 </div>
+ <div data-role="page" id='suggest_card_page'>
+    <div data-role="header">
+      <h1>Humanitarian Challenge - Suggest Cards</h1>
+    </div><!-- /header -->
+    <div data-role="content">
+     Cards will be reviewed and if they make the cut, they will be placed in the deck!
+      <form>
+        <div data-role="fieldcontain">
+          <label for="textarea">White Card:</label>
+            <textarea name="textarea" id="white_textarea"></textarea>
+        </div>
+        <a id='suggest_white_card_button' href = '#' data-role = 'button' onclick='submit_white_suggest()'> Submit </a>
+      </form>     
+      <form>
+        <div data-role="fieldcontain">
+          <label for="textarea">Black Card:</label>
+            <textarea name="textarea" id="black_textarea"></textarea>
+        </div>
+        <a id='suggest_black_card_button' href = '#' data-role = 'button' onclick= 'submit_black_suggest()' > Submit </a>
+      </form>  
+        <a id='exit' href = 'index.html' data-role = 'button' > Im Done, Get me out of here! </a>
+    </div>
+  </div>
 <!-- /dialog page for create new game -->
 
 <!-- html for main area of game -->
