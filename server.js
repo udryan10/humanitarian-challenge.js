@@ -19,7 +19,8 @@ server.listen(8000);
 app.use(express.json());
 app.use(express.urlencoded());
 app.use(express.cookieParser());
-app.use(express.static(__dirname, 'public'));
+var properties = require('./properties');
+var auth = express.basicAuth(properties.admin_credentials.user_name,properties.admin_credentials.password);
 
 // helper functions
 function connect_to_db() {
@@ -195,7 +196,6 @@ function update_submits_selective(socket,game_uid,scope)
             var connection4 = connect_to_db();
             var submission_element = {};
             (function(user){
-              console.log("in function this is or_string" + or_string);
               connection4.query("select text from white_card_deck where " + or_string,function(err,rows4){
                 var card_text_holder = "";
                 for(var z = 0; z < rows4.length;z++)
@@ -205,7 +205,6 @@ function update_submits_selective(socket,game_uid,scope)
                 submission_element = {};
                 submission_element[user] = card_text_holder;
                 json_build['submissions'].push(submission_element);
-                console.log("json_build is:" + JSON.stringify(json_build));
                 num_running_queries--;
                 if(num_running_queries === 0)
                 {
@@ -336,7 +335,6 @@ function submit_winner(socket,winner_player_uid,game_uid,callback)
 {
   var connection = connect_to_db();
   var json_build = {};
-  console.log("FUUCK" + winner_player_uid);
   connection.query("select points from player_list where uid = ?",[winner_player_uid],function(err,rows){
     var connection2 = connect_to_db();
     connection2.query("update player_list set wonlast = 0 where game_id = ?",[game_uid],function(err,rows2){
@@ -355,7 +353,6 @@ function submit_winner(socket,winner_player_uid,game_uid,callback)
 function create_new_round(socket,game_uid,callback)
 {
   
-  console.log("FUUCK in create function");
   var connection = connect_to_db();
   connection.query("select uid,czar from player_list where game_id = ? order by uid",[game_uid],function(err,rows){
     var new_czar_id;
@@ -415,8 +412,55 @@ io.sockets.on('connection', function (socket) {
     bootstrap_user(socket,JSON.parse(data)); 
   });
 
+  socket.on('get_suggested_cards', function(data,ret){
+    var connection = connect_to_db();
+    connection.query("select * from stage_new_card", function(err,rows){
+      ret(rows);
+    });
+    connection.end();
+  });
+
+  socket.on('deny_suggested_card', function(data,ret){
+    var connection = connect_to_db();
+    connection.query("delete from stage_new_card where uid = ?",[data.uid], function(err,rows){
+      ret({});
+    });
+    connection.end();
+  });
+
+  socket.on('approve_suggested_card', function(data,ret){
+    var connection = connect_to_db();
+    var table = data.color + "_card_deck";
+    if( data.color == 'white')
+    {
+      var insert_fields = {text: data.text };
+    }
+    else if (data.color == 'black')
+    {
+      console.log(data.pick2);
+      if (data.pick2 == true)
+      {
+       var pick2_int = 1; 
+      }
+      else
+      {
+       var pick2_int = 0; 
+      }
+      var insert_fields = {Text: data.text, Pick2: pick2_int };
+    }
+    console.log(insert_fields)
+    connection.query("insert into " + table + " SET ?",insert_fields, function(err,rows){
+      if(err) throw err;
+      var connection2 = connect_to_db();
+      connection2.query("delete from stage_new_card where uid = ?", [data.uid], function(err,rows){
+        ret({});
+      }); 
+      connection2.end();
+    });
+    connection.end();
+  });
+
   socket.on('card_suggest_submit', function(data,ret) {
-    console.log("here");
     var connection = connect_to_db();
     var insert_fields = {color: data.color, text: data.text};
     connection.query("insert into stage_new_card set ?",insert_fields, function(err,rows){
@@ -440,7 +484,6 @@ io.sockets.on('connection', function (socket) {
   });
 
   socket.on('create_new_round', function(data,ret){
-    console.log("FUUCK in create");
     var data = JSON.parse(data);
     create_new_round(socket,data.game_uid,function(data2){
       czar_refresh_selective(socket,data.game_uid,'broadcast') 
@@ -673,16 +716,26 @@ app.head('/suggested_card', function(req,res){
 });
 
 app.get('/', function(req, res){
-  res.sendfile(__dirname + '/public/index.html');
+  res.redirect('/index.html');
 });	
 
 app.get('/index.html', function(req, res){
   res.sendfile(__dirname + '/public/index.html');
 });	
 
+app.get('/admin.html', auth, function(req, res){
+  res.sendfile(__dirname + '/public/admin.html');
+});	
+
 app.get('/status', function(req, res){
   res.send('im alive');
 });	
+
+app.get('*', function(req, res){
+  res.redirect('/index.html');
+});	
+
+
 
 console.log('Listening on port 8000');
 

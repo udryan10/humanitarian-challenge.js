@@ -1,0 +1,61 @@
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="http://code.jquery.com/mobile/1.3.1/jquery.mobile-1.3.1.min.css" />
+  <script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+  <script src= "./public/js/jquery.cookie.js"></script>
+  <script src="http://code.jquery.com/mobile/1.3.1/jquery.mobile-1.3.1.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <style type="text/css">
+    .ui-header .ui-title {
+    margin-right: 10%;
+    margin-left: 10%;
+}
+  </style>
+</head>
+
+<body>
+<script language = "javascript" type = "text/javascript">
+var socket;
+$(document).ready(function(){
+  socket = io.connect(location.href.substr(0, location.href.indexOf("/", 8)) + ':8000');
+  generate_page();
+});
+
+function generate_page()
+{
+  socket.emit('get_suggested_cards',{},function(data){
+    var html_build = "<table data-role = 'table'><tr><td> Color </td><td> Text </td><td> Pick2 </td><td></td><td></td></tr>"; 
+    jQuery.each(data, function(index,itemData){
+        html_build += "<tr><td style = 'text-align: center; vertical-align: middle' id = 'color_"+itemData['uid']+"'>" + itemData['color'] + "</td><td><input id = 'text_"+itemData['uid']+"'type = 'text' value = '"+ itemData['text'] +"'/></td><td style = 'text-align: center; vertical-align: middle'><input type = 'checkbox' id = 'pick2_"+itemData['uid']+"'/></td><td><a href = '#' onclick = 'deny_card(\""+itemData['uid']+"\")' data-role='button'>Deny</a></td><td><a href = '#' onclick = 'approve_card(\""+itemData['uid']+"\")' data-role='button'> Approve </a></td></tr>";
+    });
+    html_build += "</table>";
+    $("#content").html(html_build).trigger('create'); 
+  });
+
+}
+function deny_card(id)
+{
+  socket.emit('deny_suggested_card', {uid: id },function(data){
+    generate_page();  
+  });
+}
+
+function approve_card(id)
+{
+  socket.emit('approve_suggested_card', {uid: id, color: $("#color_" + id).text(), text: $("#text_" + id).val(), pick2: $("#pick2_" + id).is(':checked')}, function(data){
+    generate_page();
+  });
+}
+</script>
+
+<div data-role="page">
+  <div data-role="header">
+    <h1>Admin Select Suggested Cards</h1>
+  </div>
+  <div data-role="content" id = "content">
+  </div>
+</div>
+
+</body>
+</html>
