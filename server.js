@@ -398,7 +398,7 @@ function select_random_rows(rows,return_number)
   
   for(var i = 0; i < return_number; i++)
   {
-    random_num = Math.floor((Math.random()*rows.length)+1);
+    random_num = Math.floor((Math.random()*rows.length));
     new_rows_array.push(rows[random_num]);
     rows.splice(random_num,1);
   }
@@ -528,30 +528,29 @@ io.sockets.on('connection', function (socket) {
           var connection3 = connect_to_db();
           connection3.query("delete from user_hand where active = 0 and game_id = ?",[data.game_uid],function(err,rows){
             if(err) throw err;
+            var connection4 = connect_to_db();
+            connection4.query("SELECT * from white_card_deck where id NOT IN (select white_card_id from user_hand where game_id = ?)",[data.game_uid],function(err,rows){
+              if(err) throw err;
+
+              var connection5 = connect_to_db();
+              var query_fields = ""
+              var rows =  select_random_rows(rows,cards_needed); 
+              for(i=0;i < rows.length;i++){
+                  if( i != 0) { query_fields = query_fields + ",";}
+                  query_fields = query_fields+"("+ connection5.escape(data.player_uid)+","+connection5.escape(rows[i].id)+","+connection5.escape(data.game_uid)+",1,"+connection5.escape(unix_time_stamp)+")";
+              }
+              // build_white_card_hand and return to calling socket
+              connection5.query("INSERT INTO user_hand VALUES" + query_fields,function(err){
+                if(err) throw err;
+                build_white_card_hand(data.player_uid,data.game_uid,user_full_cards,function(data){
+                  ret(data);
+                });
+              });
+              connection5.end();
+            });
+            connection4.end();
           });
           connection3.end();
-          var connection4 = connect_to_db();
-          connection4.query("SELECT * from white_card_deck where id NOT IN (select white_card_id from user_hand where game_id = ?)",[data.game_uid],function(err,rows){
-            if(err) throw err;
-
-            var connection5 = connect_to_db();
-            var query_fields = ""
-            var rows =  select_random_rows(rows,cards_needed); 
-            console.log("my new row set is " + rows.length);
-            for(i=0;i < rows.length;i++){
-                if( i != 0) { query_fields = query_fields + ",";}
-                query_fields = query_fields+"("+ connection5.escape(data.player_uid)+","+connection5.escape(rows[i].id)+","+connection5.escape(data.game_uid)+",1,"+connection5.escape(unix_time_stamp)+")";
-            }
-            // build_white_card_hand and return to calling socket
-            connection5.query("INSERT INTO user_hand VALUES" + query_fields,function(err){
-              if(err) throw err;
-              build_white_card_hand(data.player_uid,data.game_uid,user_full_cards,function(data){
-                ret(data);
-              });
-            });
-            connection5.end();
-          });
-          connetion4.end();
         }
         else
         {
@@ -643,7 +642,6 @@ io.sockets.on('connection', function (socket) {
  
   // registers user to an existing game
   socket.on('new_user_register', function (data,ret) {
-  console.log( "received new_user_register_event with data" + data);
   var code_box = data.code_box
   var player_name = data.player_name
   var connection = connect_to_db();
@@ -725,6 +723,10 @@ app.get('/index.html', function(req, res){
 
 app.get('/admin.html', auth, function(req, res){
   res.sendfile(__dirname + '/public/admin.html');
+});	
+
+app.get('/public/js/:file', auth, function(req, res){
+  res.sendfile(__dirname + '/public/js/'+ req.params.file);
 });	
 
 app.get('/status', function(req, res){

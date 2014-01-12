@@ -27,7 +27,7 @@ function generate_page()
   socket.emit('get_suggested_cards',{},function(data){
     var html_build = "<table data-role = 'table'><tr><td> Color </td><td> Text </td><td> Pick2 </td><td></td><td></td></tr>"; 
     jQuery.each(data, function(index,itemData){
-        html_build += "<tr><td style = 'text-align: center; vertical-align: middle' id = 'color_"+itemData['uid']+"'>" + itemData['color'] + "</td><td><input id = 'text_"+itemData['uid']+"'type = 'text' value = '"+ itemData['text'] +"'/></td><td style = 'text-align: center; vertical-align: middle'><input type = 'checkbox' id = 'pick2_"+itemData['uid']+"'/></td><td><a href = '#' onclick = 'deny_card(\""+itemData['uid']+"\")' data-role='button'>Deny</a></td><td><a href = '#' onclick = 'approve_card(\""+itemData['uid']+"\")' data-role='button'> Approve </a></td></tr>";
+        html_build += "<tr><td style = 'text-align: center; vertical-align: middle' id = 'color_"+itemData['uid']+"'>" + itemData['color'] + "</td><td><input id = 'text_"+itemData['uid']+"'type = 'text' value = \""+ itemData['text'].toString().replace(/"/g,'&quot;')+"\"/></td><td style = 'text-align: center; vertical-align: middle'><input type = 'checkbox' id = 'pick2_"+itemData['uid']+"'/></td><td><a href = '#' onclick = 'deny_card(\""+itemData['uid']+"\")' data-role='button'>Deny</a></td><td><a href = '#' onclick = 'approve_card(\""+itemData['uid']+"\")' data-role='button'> Approve </a></td></tr>";
     });
     html_build += "</table>";
     $("#content").html(html_build).trigger('create'); 
