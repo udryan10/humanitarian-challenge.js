@@ -725,7 +725,7 @@ app.get('/admin.html', auth, function(req, res){
   res.sendfile(__dirname + '/public/admin.html');
 });	
 
-app.get('/public/js/:file', auth, function(req, res){
+app.get('/public/js/:file', function(req, res){
   res.sendfile(__dirname + '/public/js/'+ req.params.file);
 });	
 
