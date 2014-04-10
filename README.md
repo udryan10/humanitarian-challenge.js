@@ -2,6 +2,7 @@
 
 
 mobile multi-player web based game based on Cards Against Humanity (www.cardsagainsthumanity.com).
+
 Game hosted at: http://humanitarianchallenge.co/
 
 
