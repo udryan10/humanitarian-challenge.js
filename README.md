@@ -1,9 +1,9 @@
 ##Humanitarian Challenge
 
 
-mobile multi-player web based game based on Cards Against Humanity (<code>www.cardsagainsthumanity.com </code>).
+mobile multi-player web based game based on Cards Against Humanity (<code>www.cardsagainsthumanity.com</code>).
 
-Game hosted at: <code> http://humanitarianchallenge.co/ </code>
+Game hosted at: <code>http://humanitarianchallenge.co/</code>
 
 
 ###Built using:
@@ -18,16 +18,13 @@ Game hosted at: <code> http://humanitarianchallenge.co/ </code>
 ###Developer Notes
 
 ####Client events:
-  - black_card_update - update black card
-    - expects: cardtext, cardid, pick2
-  - czar_update - update who is czar
-    - expects: czar_uid
-  - white_card_update - modify white cards
-    - expects: [index : {card_text:, card_id:}]
-  - update_score - refresh score/user table
-    - expects: [name : {score:, wonlast:,czar:}]
+    - black_card_update # instruct client to update black card
+    - czar_update # instruct client to update who is czar
+    - white_card_update # instruct client to modify white cards
+    - update_score # instruct client to refresh score/user table
+    - reconnect_failed # a reconnection to the back end failed. Display error message to user
+    - reconnecting # lost connection to back-end. Attempting a reconnect. Display error message to user
+    - reconnect # successfully re-connected
 
 ####TODO:
-  - in call back functions, need to send callback on an error and notify the client of the error so to display on screen
   - update redraw event to also draw new card so user doesnt have to click 'redraw' and then 'draw'
-  -
