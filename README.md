@@ -1,9 +1,9 @@
 ##Humanitarian Challenge
 
 
-mobile multi-player web based game based on Cards Against Humanity (www.cardsagainsthumanity.com).
+mobile multi-player web based game based on Cards Against Humanity (<code>www.cardsagainsthumanity.com </code>).
 
-Game hosted at: http://humanitarianchallenge.co/
+Game hosted at: <code> http://humanitarianchallenge.co/ </code>
 
 
 ###Built using:
