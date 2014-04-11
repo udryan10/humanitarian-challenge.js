@@ -25,6 +25,11 @@ Game hosted at: <code>http://humanitarianchallenge.co/</code>
     - reconnect_failed # a reconnection to the back end failed. Display error message to user
     - reconnecting # lost connection to back-end. Attempting a reconnect. Display error message to user
     - reconnect # successfully re-connected
+    - unlock_submit # unlock submit button at start of new round
+    - update_submits # instruct client to update submit card for card czar
+    - redraw_remaining_update # instruct client to update the number of redraws remaining
+    - update_score # instruct client to upadte score section
+    - test_event # test event that will log to the data to the console
 
 ####TODO:
   - update redraw event to also draw new card so user doesnt have to click 'redraw' and then 'draw'
