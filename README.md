@@ -28,3 +28,5 @@ Game hosted at: <code>http://humanitarianchallenge.co/</code>
 
 ####TODO:
   - update redraw event to also draw new card so user doesnt have to click 'redraw' and then 'draw'
+  - restructure/break code out maintainable files
+
